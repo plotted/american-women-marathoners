@@ -1,0 +1,204 @@
+---
+title: "American Women Marathoners"
+author: "Gaston Sanchez"
+date: "Apr 30, 2025"
+format: 
+  html:
+    toc: true
+    number-sections: true
+    theme: zephyr
+embed-resources: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+```
+
+
+```{r pkgs, message = FALSE, echo = FALSE}
+library(tidyverse) # ecosystem of data science packages
+library(rvest)     # for web scraping
+```
+
+
+# Description
+
+The data visualization of this module is based on the scatter plot that appears 
+in the following New York Times article by Talya Minsberg and Kevin Quealy 
+
+__Why Are American Women Running Faster Than Ever? We Asked Them---Hundreds of Them__
+
+<https://www.nytimes.com/interactive/2020/02/28/sports/womens-olympic-marathon-trials.html>
+
+![50 fastest U.S. women's marathons per year](source/50-fastest-us-womens-marathons-per-year.png){width=70%}
+
+
+\
+
+## Details (datasheet)
+
+- __Topic(s)__: 
+  + Sports 
+  + Athletics
+  + Women
+  + Marathon
+  + U.S.
+- __Data__:
+  + Size: medium data
+  + Format: data in HTML tables
+  + Requires web scraping
+  + Requires some cleansing (e.g. regex)
+  + Requires merging data
+- __Graphic__:
+  + Type: scatter plot
+  + Styles: ggplot, interactive ggiraph, interactive leaflet 
+  + Interactive: no
+
+
+## R Packages
+
+```{r pkgs, eval = FALSE}
+```
+
+
+-----
+
+
+# Data
+
+The source of the data is the website _World Athletics_. The data collection 
+involves web crawling and scraping several pages from this website. All the R 
+code used for this task is in the script `web-scraping-world-athletrics.R`,
+located in the folder `data/` of this repository.
+
+In this `data/` folder, you'll find various HTML files of the form 
+`marathon-women-yyyy.html` where `yyyy` indicates a given year from 2001 to 
+2024.
+
+
+## Data Preparation
+
+The commands below import the HTML files in R, scrape the HTML tables into 
+data frames, and extract the `Mark` and `Competitor` columns. The main output
+is a tidy table with columns:
+
+- `Year`: year
+
+- `Mark`: Time to complete marathon (string)
+
+- `Competitor`: Name of runner
+
+- `hours`: number of hours (from `Mark`)
+
+- `mins`: number of minutes (from `Mark`)
+
+- `secs`: number of seconds (from `Mark`)
+
+- `time`: total time in minutes to complete marathon
+
+- `pace`: time (minutes) to run a mile
+
+
+```{r}
+# output vectors
+Year = NULL
+Mark = NULL
+Competitor = NULL
+
+# import HTML files, and extract columns Mark and Competitor from tables
+for (y in 2001:2024) {
+  tbls = read_html(paste0("data/marathon-women-", y, ".html")) |> 
+    html_table()
+  tbl_raw = tbls[[1]]
+  Year = c(Year, rep(y, nrow(tbl_raw)))
+  Mark = c(Mark, tbl_raw$Mark)
+  Competitor = c(Competitor, tbl_raw$Competitor)
+}
+
+# assemble data
+dat = tibble(
+  Year = Year,
+  Mark = Mark,
+  Competitor = Competitor
+)
+
+# a bit of cleaning
+dat = dat |> 
+  mutate(
+    hours = as.numeric(str_extract(Mark, "\\d")) * 60,
+    mins = as.numeric(str_extract(Mark, "\\d{2}")),
+    secs = as.numeric(str_extract(Mark, "\\d{2}$")) / 60,
+    time = hours + mins + secs,
+    pace = time / 26.2188 # marathon in miles
+  )
+
+head(dat)
+```
+
+
+-----
+
+
+# Graphics
+
+We go over a series of plots to work out the plotting details.
+
+
+## Graphic 1
+
+First we do a sanity check:
+
+```{r}
+ggplot(data = dat, aes(x = Year, y = time)) +
+  geom_point() +
+  labs(title = "50 fastest U.S. women’s marathons per year",
+       x = "")
+```
+
+
+## Graphic 2
+
+We specify the point shape to `21` so that we can use colors for `fill`
+and border (`color`)
+
+```{r}
+ggplot(data = dat, aes(x = Year, y = time)) +
+  geom_point(fill = "tomato", shape = 21, color = "white") +
+  labs(title = "50 fastest U.S. women’s marathons per year",
+       x = "")
+```
+
+
+## Graphic 3
+
+We need to reverse the y-axis, this can be done with `scale_y_everse()`;
+also we use `geom_jitter()` to scatter the points along the x-axis
+
+```{r}
+ggplot(data = dat, aes(x = Year, y = pace)) +
+  geom_jitter(fill = "#eb2f72", shape = 21, color = "white", width = 0.1) +
+  scale_y_reverse() +
+  scale_x_continuous(breaks = seq(2001, 2024, by = 2)) +
+  labs(title = "50 fastest U.S. women’s marathons per year",
+       x = "")
+```
+
+
+## Graphic 4
+
+Finally, we take case of the rest of details: e.g. grid lines, background,
+scales, etc.
+
+```{r}
+ggplot(data = dat, aes(x = Year, y = pace)) +
+  geom_jitter(fill = "#eb2f72", shape = 21, color = "white", width = 0.1) +
+  scale_y_reverse() +
+  scale_x_continuous(breaks = seq(2001, 2024, by = 2)) +
+  labs(title = "50 fastest U.S. women’s marathons per year",
+       x = "") +
+  theme(panel.grid.minor = element_blank(), 
+        panel.grid.major.x = element_blank(),
+        panel.grid.major.y = element_line(color = "gray92"),
+        panel.background = element_rect(fill = "gray97"))
+```
+
