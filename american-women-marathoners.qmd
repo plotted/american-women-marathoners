@@ -51,7 +51,7 @@ __Why Are American Women Running Faster Than Ever? We Asked Them---Hundreds of T
   + Requires merging data
 - __Graphic__:
   + Type: scatter plot
-  + Styles: ggplot, interactive ggiraph, interactive leaflet 
+  + Styles: ggplot, interactive ggiraph 
   + Interactive: no
 
 
